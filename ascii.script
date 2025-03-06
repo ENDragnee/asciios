@@ -1,0 +1,129 @@
+// Arch Linux elegant Plymouth theme
+
+// Screen size
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+screen_width = Window.GetWidth();
+screen_height = Window.GetHeight();
+
+// Arch Logo - Reduced by 1/2
+logo_image = Image("arch-logo.png");
+logo_scaled = logo_image.Scale(logo_image.GetWidth() / 4, logo_image.GetHeight() / 4);
+logo.sprite = Sprite(logo_scaled);
+logo.x = screen_width / 2 - logo_scaled.GetWidth() / 2;
+logo.y = screen_height / 2 - logo_scaled.GetHeight() / 2 - 50;  // Adjusted position
+logo.sprite.SetPosition(logo.x, logo.y, 0);
+logo.sprite.SetOpacity(1);
+
+// Create the spinner animation - Reduced by 1/4
+spinner_image = Image("spinner.png");
+spinner_scaled = spinner_image.Scale(spinner_image.GetWidth() * 0.5, spinner_image.GetHeight() * 0.5);
+spinner_width = spinner_scaled.GetWidth();
+spinner_height = spinner_scaled.GetHeight();
+spinner_sprite = Sprite();
+spinner_sprite.SetImage(spinner_scaled);
+spinner_sprite.SetX(screen_width / 2 - spinner_width / 2);
+spinner_sprite.SetY(screen_height / 2 + 350);  // Adjusted position since text is removed
+
+// Animation function for the spinner and logo pulse
+spinner_angle = 0;
+status = "normal";
+
+// Pre-compute a set of scaled logos to reduce choppiness
+scale_steps = 120;  // More steps for even smoother and slower animation
+scaled_logos = [];
+scaled_x = [];
+scaled_y = [];
+
+// Create a series of pre-scaled logo images
+// The logo will only scale down from its normal size (1) to a minimum of 0.97
+for (i = 0; i < scale_steps; i++) {
+    // Calculate cosine value for current step
+    // Cosine ranges from 1 to -1 and back to 1 over the cycle.
+    cosine_value = Math.Cos(i / scale_steps * Math.Pi * 2);
+    
+    // Remap cosine_value so that when it's 1, scale_factor is 1 (normal size)
+    // and when it's -1, scale_factor is 0.97 (reduced size).
+    // Mapping: normalized = (1 - cosine_value) / 2, then scale = 1 - normalized * 0.1.
+    scale_factor = 1 - ((1 - cosine_value) / 2 * 0.1);
+    
+    scaled_img = logo_scaled.Scale(
+        logo_scaled.GetWidth() * scale_factor,
+        logo_scaled.GetHeight() * scale_factor
+    );
+    
+    // Pre-calculate positions for centered alignment
+    pos_x = screen_width / 2 - (scaled_img.GetWidth() / 2);
+    pos_y = screen_height / 2 - (scaled_img.GetHeight() / 2) - 50;
+    
+    scaled_logos[i] = scaled_img;
+    scaled_x[i] = pos_x;
+    scaled_y[i] = pos_y;
+}
+
+current_step = 0;
+// Control the animation speed - lower value = slower animation
+animation_speed = 0.5;  // Adjust this value to control speed
+step_progress = 0;
+
+fun refresh_callback() {
+    spinner_angle += 0.1;
+    spinner_sprite.SetImage(spinner_scaled.Rotate(spinner_angle));
+    
+    if (status == "normal") {
+        // Only advance to next frame when enough progress has accumulated
+        step_progress += animation_speed;
+        
+        // When progress reaches 1, move to next step
+        if (step_progress >= 1) {
+            current_step = (current_step + 1) % scale_steps;
+            step_progress = 0;
+        }
+        
+        // Use pre-computed logo for current step
+        current_logo = scaled_logos[current_step];
+        if (current_logo) {  // Ensure the logo exists before using it
+            logo.sprite.SetImage(current_logo);
+            logo.sprite.SetPosition(scaled_x[current_step], scaled_y[current_step], 0);
+            
+            // Calculate brightness based on current step using cosine:
+            // Cosine value ranges from -1 to 1.
+            // Remap it to an opacity range of 0.6 (dimmest) to 1 (brightest)
+            cosine_value = Math.Cos(current_step / scale_steps * Math.Pi * 2);
+            brightness = ((cosine_value + 1) / 2) * (1 - 0.6) + 0.6;
+            logo.sprite.SetOpacity(brightness);
+        }
+    } else {
+        // Maximum brightness when done
+        logo.sprite.SetImage(logo_scaled);
+        logo.sprite.SetPosition(logo.x, logo.y, 0);
+        logo.sprite.SetOpacity(1);  // Brightness clamped to 1
+    }
+}
+Plymouth.SetRefreshFunction(refresh_callback);
+
+// Message handling
+message_sprite = Sprite();
+message_sprite.SetPosition(screen_width / 2, screen_height - 24, 10000);
+
+fun display_message(text) {
+    message_image = Image.Text(text, 1, 1, 1, 1);
+    message_sprite.SetImage(message_image);
+    message_sprite.SetX(screen_width / 2 - message_image.GetWidth() / 2);
+}
+
+Plymouth.SetDisplayMessageFunction(display_message);
+
+// Show system boot progress
+fun progress_callback(duration, progress) {
+    // Update spinner rotation to match boot progress
+    if (progress >= 1) {
+        status = "done";
+    }
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+// Create these image files in the theme directory:
+// 1. arch-logo.png - A large Arch Linux logo, white on transparent background
+// 2. spinner.png - A circular spinner with a gap, like the referenced loading screen
+

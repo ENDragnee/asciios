@@ -1,0 +1,92 @@
+// Arch Linux elegant Plymouth theme
+
+// Screen size
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+screen_width = Window.GetWidth();
+screen_height = Window.GetHeight();
+
+// Arch Logo - Reduced by 1/2
+logo_image = Image("arch-logo.png");
+logo_scaled = logo_image.Scale(logo_image.GetWidth() / 4, logo_image.GetHeight() / 4);
+logo.sprite = Sprite(logo_scaled);
+logo.x = screen_width / 2 - logo_scaled.GetWidth() / 2;
+logo.y = screen_height / 2 - logo_scaled.GetHeight() / 2 - 50;  // Adjusted position
+logo.sprite.SetPosition(logo.x, logo.y, 0);
+logo.sprite.SetOpacity(1);
+
+// Create silver glow for the logo
+glow_image = Image("glow.png");  // You'll need to create a radial white/silver gradient image
+glow_scaled = glow_image.Scale(logo_scaled.GetWidth() * 2, logo_scaled.GetHeight() * 1.5);  // Make glow larger than logo
+glow_sprite = Sprite(glow_scaled);
+glow_sprite.SetPosition(logo.x - (glow_scaled.GetWidth() - logo_scaled.GetWidth()) / 2, 
+                        logo.y - (glow_scaled.GetHeight() - logo_scaled.GetHeight()) / 2, -1);  // Position behind logo
+
+// Create the spinner animation - Reduced by 1/4
+spinner_image = Image("spinner.png");
+spinner_scaled = spinner_image.Scale(spinner_image.GetWidth() * 0.5, spinner_image.GetHeight() * 0.5);
+spinner_width = spinner_scaled.GetWidth();
+spinner_height = spinner_scaled.GetHeight();
+spinner_sprite = Sprite();
+spinner_sprite.SetImage(spinner_scaled);
+spinner_sprite.SetX(screen_width / 2 - spinner_width / 2);
+spinner_sprite.SetY(screen_height / 2 + 350);  // Adjusted position since text is removed
+
+// Animation function for the spinner and glow
+spinner_angle = 0;
+time = 0;
+status = "normal";
+
+fun refresh_callback() {
+    spinner_angle += 0.1;
+    spinner_sprite.SetImage(spinner_scaled.Rotate(spinner_angle));
+    
+    if (status == "normal") {
+        // Calculate silver glow opacity - 2 second interval for full cycle
+        // Math.Sin gives values between -1 and 1, so we adjust to get 0.1 to 0.7 range
+	//glow_opacity = 0.7 - Math.Sin(time * Math.Pi) * 0.3;
+        glow_opacity = Math.Sin(time * Math.Pi) * 0.3 + 0.4;  // Oscillates between 0.1 and 0.7
+        glow_sprite.SetOpacity(glow_opacity);
+        
+        // Keep logo at full opacity
+        logo.sprite.SetOpacity(1);
+    } else {
+        logo.sprite.SetOpacity(1);
+        glow_sprite.SetOpacity(0.7);  // Max glow when done
+    }
+    
+    // Increment time - adjusted to make glow cycle complete in exactly 2 seconds
+    // Since refresh is called approx 50 times per second, we increment by 0.01
+    // Pi * 2 = full cycle, so time += 0.01 makes a full cycle in 2 seconds (Pi/50 seconds)
+    time += 0.01;
+    if (time >= 2) {
+        time = 0;  // Reset after 2 seconds to maintain the interval
+    }
+}
+Plymouth.SetRefreshFunction(refresh_callback);
+
+// Message handling
+message_sprite = Sprite();
+message_sprite.SetPosition(screen_width / 2, screen_height - 24, 10000);
+
+fun display_message(text) {
+    message_image = Image.Text(text, 1, 1, 1, 1);
+    message_sprite.SetImage(message_image);
+    message_sprite.SetX(screen_width / 2 - message_image.GetWidth() / 2);
+}
+
+Plymouth.SetDisplayMessageFunction(display_message);
+
+// Show system boot progress
+fun progress_callback(duration, progress) {
+    // Update spinner rotation to match boot progress
+    if (progress >= 1) {
+        status = "done";
+    }
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+// Create these image files in the theme directory:
+// 1. arch-logo.png - A large Arch Linux logo, white on transparent background
+// 2. spinner.png - A circular spinner with a gap, like the referenced loading screen
+// 3. glow.png - A radial silver/white gradient for the glowing effect

@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Arch Elegant
+Description=A sleek, elegant theme for Arch Linux
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/arch-elegant
+ScriptFile=/usr/share/plymouth/themes/arch-elegant/arch-elegant.script
